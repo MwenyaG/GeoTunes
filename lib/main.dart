@@ -1,0 +1,78 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:finalassignment/data/models/place.dart';
+import 'package:finalassignment/data/models/point.dart';
+import 'package:finalassignment/data/models/reminder.dart';
+import 'package:finalassignment/pages/home.dart';
+import 'package:finalassignment/themes/theme_data.dart';
+import 'package:finalassignment/data/app_states.dart';
+import 'package:provider/provider.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // For older browsers and devices trust Let’s Encrypt certificates.
+  // For more information: https://letsencrypt.org/docs/dst-root-ca-x3-expiration-september-2021/
+  ByteData data =
+      await PlatformAssetBundle().load('assets/ca/lets-encrypt-r3.pem');
+  SecurityContext.defaultContext
+      .setTrustedCertificatesBytes(data.buffer.asUint8List());
+
+  // Initialize hive databases
+  await Hive.initFlutter('loc_db');
+
+  Hive.registerAdapter<Reminder>(ReminderAdapter());
+  Hive.registerAdapter<Place>(PlaceAdapter());
+  Hive.registerAdapter<Point>(PointAdapter());
+
+  boxReminders = await Hive.openBox('reminders');
+  boxFavorites = await Hive.openBox('favorites');
+  boxPreferences = await Hive.openBox('settings');
+
+  runApp(const Root());
+}
+
+class Root extends StatelessWidget {
+  const Root({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<AppStates>(
+      create: (context) => AppStates(),
+      child: const Loc(),
+    );
+  }
+}
+
+class Loc extends StatelessWidget {
+  const Loc({super.key});
+
+  ThemeMode mode(String state) {
+    switch (state) {
+      case 'System':
+        return ThemeMode.system;
+      case 'Dark':
+        return ThemeMode.dark;
+      case 'Light':
+        return ThemeMode.light;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appStates = Provider.of<AppStates>(context);
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: LocThemeData.lightThemeData,
+      //darkTheme: LocThemeData.darkThemeData,
+      themeMode: mode(appStates.themeMode),
+      home: const HomePage(),
+    );
+  }
+}
